@@ -1,65 +1,84 @@
-const gameData = {
-  1: {
-    map: {
-      image: '1.jpg',
-      ratio: '0.305/1',
-    },
-    heroes: [
-      {
-        name: 'Bowser',
-        image: 'bowser.png',
-        X: 84,
-        Y: 24,
-        marginX: 5,
-        marginY: 2,
-      },
-      {
-        name: 'Zoidberg',
-        image: 'zoidberg.png',
-        X: 83,
-        Y: 83,
-        marginX: 7,
-        marginY: 3,
-      },
-      {
-        name: 'Krang',
-        image: 'krang.png',
-        X: 47.5,
-        Y: 18.5,
-        marginX: 2,
-        marginY: 0.5,
-      },
-      {
-        name: 'Link',
-        image: 'link.png',
-        X: 22.5,
-        Y: 94.5,
-        marginX: 2,
-        marginY: 1,
-      },
-    ],
-  },
+import { initializeApp } from 'firebase/app';
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  arrayUnion,
+} from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyBqcnS7YmbBWvtyQBBfYmuCudo_pP-wUaA',
+  authDomain: 'vertorama.firebaseapp.com',
+  projectId: 'vertorama',
+  storageBucket: 'vertorama.appspot.com',
+  messagingSenderId: '24120120030',
+  appId: '1:24120120030:web:d6c35858a4bc5b4b99684f',
 };
 
-export const checkIfHit = (X, Y, difficulty) => {
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const test = await getDocs(collection(db, 'maps'));
+
+export const getData = async ({ setDataLoaded }) => {
+  let gameData = {};
+  let i = 1;
+  test.forEach((doc) => {
+    //   console.log(i);
+    //   console.log(`${doc.id} => ${doc.data()}`);
+    //   console.log(doc.data());
+    gameData[i] = doc.data();
+    gameData[i]['id'] = doc.id;
+    i++;
+  });
+  setDataLoaded(true);
+  return gameData;
+};
+
+export const saveHighScore = async ({ CID, timer }) => {
+  // console.log(timer);
+  const docRef = doc(db, 'maps', CID);
+  await updateDoc(docRef, {
+    scores: arrayUnion({ time: timer / 100, name: 'xDD' }),
+  });
+};
+
+export const checkIfHit = ({ X, Y, heroes }) => {
   let HIT = false;
-  gameData[difficulty]['heroes'].forEach((item) => {
+  heroes.forEach((item) => {
     // console.log(`checking distances to ${item.name}`);
     let distanceToX = Math.abs(item.X - X);
     // console.log(distanceToX);
     let distanceToY = Math.abs(item.Y - Y);
     // console.log(distanceToY);
     if (distanceToX <= item.marginX && distanceToY <= item.marginY) {
-      HIT = `HIT! ${item.name} clicked!`;
+      HIT = item;
     }
   });
   return HIT;
 };
 
-export const prepareLevel = ({ difficulty, setGameLoaded }) => {
-  console.log('preapring level');
-  let backgroundDiv = document.querySelector('#background');
-  backgroundDiv.style.aspectRatio = `${gameData[difficulty]['map']['ratio']}`;
-  backgroundDiv.style.backgroundImage = `url(./${gameData[difficulty]['map']['image']})`;
-  setGameLoaded(true);
+export const prepareLevel = ({
+  map,
+  gameData,
+  setHeroes,
+  setGameLoaded,
+  setCID,
+}) => {
+  if (gameData.length != 0) {
+    // console.log(gameData[map]);
+    let backgroundDiv = document.querySelector('#background');
+    backgroundDiv.style.aspectRatio = `${gameData[map]['ratio']}`;
+    backgroundDiv.style.backgroundImage = `url(./${gameData[map]['background']})`;
+    let heroes = gameData[map]['heroes'].map((h) => ({
+      ...h,
+      clicked: false,
+    }));
+    setHeroes(heroes);
+    setGameLoaded(true);
+    setCID(gameData[map]['id']);
+  }
 };
